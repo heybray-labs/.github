@@ -1,0 +1,38 @@
+name: guards
+
+on:
+  workflow_call:
+    inputs:
+      changesets:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  guards:
+    name: guards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run repo guards
+        run: |
+          test -x bin/guards.sh || { echo "bin/guards.sh missing or not executable"; exit 1; }
+          ./bin/guards.sh
+
+      - if: ${{ inputs.changesets }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - if: ${{ inputs.changesets }}
+        run: npm ci
+
+      - if: ${{ inputs.changesets }}
+        name: Changeset present for source changes
+        run: npx changeset status --since=origin/main
