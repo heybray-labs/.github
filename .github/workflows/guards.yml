@@ -25,16 +25,28 @@ jobs:
           ./bin/guards.sh
 
       # Version Packages PRs consume changesets and bump versions — they must not
-      # be required to carry a fresh changeset.
-      - if: ${{ inputs.changesets && github.head_ref != 'changeset-release/main' }}
+      # be required to carry a fresh changeset. github.head_ref can be empty under
+      # workflow_call; resolve the PR head ref explicitly.
+      - id: changeset_gate
+        run: |
+          REF="${{ github.head_ref }}"
+          if [ -z "$REF" ]; then REF="${{ github.event.pull_request.head.ref }}"; fi
+          echo "head_ref=$REF" >> "$GITHUB_OUTPUT"
+          if [ "$REF" = "changeset-release/main" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: ${{ inputs.changesets && steps.changeset_gate.outputs.enabled == 'true' }}
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      - if: ${{ inputs.changesets && github.head_ref != 'changeset-release/main' }}
+      - if: ${{ inputs.changesets && steps.changeset_gate.outputs.enabled == 'true' }}
         run: npm ci
 
-      - if: ${{ inputs.changesets && github.head_ref != 'changeset-release/main' }}
+      - if: ${{ inputs.changesets && steps.changeset_gate.outputs.enabled == 'true' }}
         name: Changeset present for source changes
         run: npx changeset status --since=origin/main
