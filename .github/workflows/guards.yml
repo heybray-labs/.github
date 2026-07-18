@@ -24,15 +24,17 @@ jobs:
           test -x bin/guards.sh || { echo "bin/guards.sh missing or not executable"; exit 1; }
           ./bin/guards.sh
 
-      - if: ${{ inputs.changesets }}
+      # Version Packages PRs consume changesets and bump versions — they must not
+      # be required to carry a fresh changeset.
+      - if: ${{ inputs.changesets && github.head_ref != 'changeset-release/main' }}
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      - if: ${{ inputs.changesets }}
+      - if: ${{ inputs.changesets && github.head_ref != 'changeset-release/main' }}
         run: npm ci
 
-      - if: ${{ inputs.changesets }}
+      - if: ${{ inputs.changesets && github.head_ref != 'changeset-release/main' }}
         name: Changeset present for source changes
         run: npx changeset status --since=origin/main
